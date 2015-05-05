@@ -5,123 +5,78 @@ defmodule Router do
 
   plug :match
   plug :dispatch
-  
-  # =========================================== #
-  # Below is a collection of sample end-points. #
-  # =========================================== #
 
+  # 1) Create a simple proxy.
+  #
+  # Use conn.query_string to retrieve a url.
+  # Call end-point with "/proxy?www.example.com".
+  #
+  # Functions: conn.query_string, request, response(conn)
   get "/proxy" do
     conn.query_string
     |> request
     |> response(conn)
   end
-  
-  get "/proxy/gzip" do
-    conn.query_string
-    |> request
-    |> response(conn, compress: true)
-  end
 
-  get "/proxy/multi" do
-    String.split(conn.query_string, "|")
-    |> request
-    |> response(conn)
-  end
+  # 2) Use the function concatenate_json to concatenate two API-calls.
+  #
+  # Functions: request, concatenate_json, response(conn)
+  get "/concatenate-json" do
+    url_1 = "http://ip.jsontest.com/"
+    url_2 = "http://date.jsontest.com/"
 
-  get "/proxy/set-headers" do
-    conn.query_string
-    |> request
-    |> response(conn, [headers: %{"Rackla" => "CrocodilePear"}])
-  end
-
-  get "/proxy/concat-json" do
-    conn.query_string
-    |> request
-    |> concatenate_json
-    |> response(conn)
-  end
-  
-  get "/proxy/invalid-transform" do
-    invalid_transform = fn(response) ->
-      Dict.get!(response, :nope)
-    end
-    
-    conn.query_string
-    |> request
-    |> transform(invalid_transform)
-    |> concatenate_json
-    |> response(conn)
-  end
-
-  get "/proxy/multi/concat-json" do
-    String.split(conn.query_string, "|")
+    [url_1, url_2]
     |> request
     |> concatenate_json
     |> response(conn)
   end
 
-  get "/proxy/multi/concat-json/body-only" do
-    String.split(conn.query_string, "|")
+  # 3) Add a new header to the response: "foo" = "bar".
+  #
+  # Functions: request, transform(header), Map.update!, Map.put, response(conn)
+  get "/proxy/header" do
+    header = fn(response) ->
+      Map.update!(response, :headers, fn(head) ->
+        Map.put(head, "foo", "bar")
+      end)
+    end
+
+    "http://ip.jsontest.com/"
     |> request
-    |> concatenate_json(body_only: true)
+    |> transform(header)
     |> response(conn)
   end
 
-  get "/proxy/transform/blanker" do
-    blanker = fn(response) ->
-      response
-      |> Map.update!(:status, fn(_) -> 404 end)
-      |> Map.update!(:headers, fn(_) -> %{} end)
-      |> Map.update!(:body, fn(_) -> "" end)
-      |> Map.update!(:meta, fn(_) -> %{} end)
+  # 4) Use the function "transform" to modify the result and strip out everyting
+  # except the date. Respond with just the date as a string, no JSON!
+  #
+  # Functions: request, transform(datifyer), Map.update!, Map.get,
+  # Poison.decode!, response(conn)
+  get "/date" do
+    datifyer = fn(response) ->
+      Map.update!(response, :body, fn(body) ->
+        body
+        |> Poison.decode!
+        |> Map.get("date")
+      end)
     end
 
-    request(conn.query_string)
-    |> transform(blanker)
+    "http://date.jsontest.com/"
+    |> request
+    |> transform(datifyer)
     |> response(conn)
   end
 
-  get "/proxy/transform/identity" do
-    identity = fn(response) ->
-      response
-      |> Map.update!(:status, fn(x) -> x end)
-      |> Map.update!(:headers, fn(x) -> x end)
-      |> Map.update!(:body, fn(x) -> x end)
-      |> Map.update!(:meta, fn(x) -> x end)
-    end
-
-    request(conn.query_string)
-    |> transform(identity)
-    |> response(conn)
-  end
-
-  get "/proxy/transform/multi" do
-    func_creator = fn(key) ->
-      fn(response) ->
-        Map.update!(response, :body, fn(body) ->
-          body 
-          |> Poison.decode! 
-          |> Map.has_key?(key) 
-          |> to_string 
-        end)
-      end
-    end
-
-    uris = String.split(conn.query_string, "|")
-    funcs =
-      ["object_or_array", "ip", "one", "time"]
-      |> Enum.map(func_creator)
-
-    request(uris)
-    |> transform(funcs)
-    |> response(conn)
-  end
-
-  get "/temperature" do
-    uris =
-      String.split(conn.query_string, "|")
-      |> Enum.map(&("http://api.openweathermap.org/data/2.5/weather?q=#{&1}"))
-
+  # 5) Create an end-point which can receive an arbitrary amount of cities and
+  # display the name and temperature (in Kelvin) as response.
+  #
+  # If the URL is called with "/weather?Malmo,se|Lund,se|Helsingborg,se" it
+  # should return [{"Lund":288.189},{"Helsingborg":286.139},{"Malmo":288.189}]
+  # in JSON format. Hint: use concatenate_json(body_only: true)
+  #
+  # Use the API http://api.openweathermap.org/data/2.5/weather?q=Malmo,se
+  # Note that you have to make one call for each city!
+  get "/weather" do
     temperature_extractor = fn(item) ->
       Map.update!(item, :body, fn(body) ->
         response_body = Poison.decode!(body)
@@ -131,60 +86,104 @@ defmodule Router do
       end)
     end
 
-    uris
+    conn.query_string
+    |> String.split("|")
+    |> Enum.map(&("http://api.openweathermap.org/data/2.5/weather?q=#{&1}"))
     |> request
     |> transform(temperature_extractor)
     |> concatenate_json(body_only: true)
     |> response(conn)
   end
-  
-  # Access-token from the Instagram API is required to use this end-point.
-  get "/instagram" do
+
+  # 6) Combine two APIs! Display the weather as in the previous example, but
+  # instead we will accept an arbitrary amount of postal codes.
+  #
+  # If the URL is called with "/weather/postal_code?22644|21120" it should
+  # return [{"Lunds Kommun":286.753},{"Malmoe":286.753}] in JSON format.
+  #
+  # First call the API http://yourmoneyisnowmymoney.com/api/zipcodes/?zipcode=<postal code>
+  # and extract the latitude and longitude.
+  #
+  # Then call the API http://api.openweathermap.org/data/2.5/weather?lat=<latitude>&lon=<longitude>
+  # to get the weather data.
+  get "/weather/postal_code" do
+    postal_code_to_temperature = fn(item) ->
+      Map.update!(item, :body, fn(body) ->
+
+        %{"lat" => lat, "lng" => lng} =
+          Poison.decode!(body)
+          |> Map.get("results")
+          |> Enum.at(0)
+
+        response_body =
+          "http://api.openweathermap.org/data/2.5/weather?lat=#{lat}&lon=#{lng}"
+          |> request
+          |> collect_response
+          |> Enum.at(0)
+          |> Map.get(:body)
+          |> Poison.decode!
+
+        Map.put(%{}, response_body["name"], response_body["main"]["temp"])
+        |> Poison.encode!
+      end)
+    end
+
+    conn.query_string
+    |> String.split("|")
+    |> Enum.map(&("http://yourmoneyisnowmymoney.com/api/zipcodes/?zipcode=#{&1}"))
+    |> request
+    |> transform(postal_code_to_temperature)
+    |> concatenate_json(body_only: true)
+    |> response(conn)
+  end
+
+  # 7) Astronomy picture of the dayS!
+  #
+  # Take an arbitrary amount of dates and use them to call the API:
+  # https://api.data.gov/nasa/planetary/apod?concept_tags=True&api_key=DEMO_KEY&date=2015-03-29
+  #
+  # Use someting like this to encode the image data as text:
+  # "<img src=\"data:image/jpeg;base64,#{Base.encode64(body)}\" height=\"150px\" width=\"150px\">"
+  #
+  # Stub code is provided to make it valid HTML so you can view it in your
+  # browser. There is no unit test for this, check it out yourself!
+  get "/astronomy" do
     require Logger
-    
+
+    dates = conn.query_string
+
     binary_to_img = fn(item) ->
       Map.update!(item, :body, fn(body) ->
         "<img src=\"data:image/jpeg;base64,#{Base.encode64(body)}\" height=\"150px\" width=\"150px\">"
       end)
     end
-    
-    chunk_status = 
-      conn
-        |> send_chunked(200)
-        |> chunk("<!doctype html><html lang=\"en\"><head></head><body>")
 
-    conn =  
+    chunk_status =
+      conn
+      |> send_chunked(200)
+      |> chunk("<!doctype html><html lang=\"en\"><head></head><body>")
+
+    conn =
       case chunk_status do
-        {:ok, new_conn} -> 
+        {:ok, new_conn} ->
           new_conn
 
         {:error, reason} ->
           Logger.error("Unable to chunk response: #{reason}")
           conn
       end
-      
+
     conn =
-      "https://api.instagram.com/v1/users/self/feed?count=50&access_token=" <> conn.query_string
-      |> timer("Got URL")
+      dates
+      |> String.split("|")
+      |> Enum.map(&("https://api.data.gov/nasa/planetary/apod?concept_tags=True&api_key=DEMO_KEY&date=#{&1}"))
       |> request
-      |> timer("Executed request")
-      |> collect_response |> Enum.at(0)
-      |> timer("Collected response")
-      |> Map.get(:body)
-      |> timer("Got body")
-      |> Poison.decode!
-      |> timer("Decoded JSON")
-      |> Map.get("data")
-      |> timer("Extracted data")
-      |> Enum.map(&(&1["images"]["standard_resolution"]["url"]))
-      |> timer("Mapped image url")
+      |> collect_response
+      |> Enum.map(fn(response) -> response.body |> Poison.decode! |>  Map.get("url") end)
       |> request
-      |> timer("Executed request")
       |> transform(binary_to_img)
-      |> timer("Added transform function")
       |> response(conn)
-      |> timer("Responded to query")
-      
+
     case chunk(conn, "</body></html>") do
       {:ok, new_conn} -> new_conn
 
