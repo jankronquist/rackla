@@ -114,7 +114,7 @@ defmodule RouterTest do
     assert length(response) == 2
     
     [lund, jkpg] = response
-    assert Map.keys(lund) == ["Lund"]
-    assert Map.keys(jkpg) == ["Jonkoping"]
+    assert lund |> Map.keys |> Enum.at(0) |> String.contains?("Lund")
+    assert jkpg |> Map.keys |> Enum.at(0) |> String.contains?("Jonkoping")
   end
 end

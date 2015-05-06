@@ -9,7 +9,7 @@ defmodule Router do
   get "/proxy" do
     conn.query_string
     |> request
-    |> response(conn)
+    |> response
   end
 
   get "/concatenate-json" do
@@ -19,7 +19,7 @@ defmodule Router do
     [url_1, url_2]
     |> request
     |> concatenate_json
-    |> response(conn)
+    |> response
   end
 
   get "/proxy/header" do
@@ -32,7 +32,7 @@ defmodule Router do
     "http://ip.jsontest.com/"
     |> request
     |> transform(header)
-    |> response(conn)
+    |> response
   end
 
   get "/date" do
@@ -47,7 +47,7 @@ defmodule Router do
     "http://date.jsontest.com/"
     |> request
     |> transform(datifyer)
-    |> response(conn)
+    |> response
   end
 
   get "/weather" do
@@ -66,7 +66,7 @@ defmodule Router do
     |> request
     |> transform(temperature_extractor)
     |> concatenate_json(body_only: true)
-    |> response(conn)
+    |> response
   end
 
   get "/weather/postal_code" do
@@ -97,7 +97,7 @@ defmodule Router do
     |> request
     |> transform(postal_code_to_temperature)
     |> concatenate_json(body_only: true)
-    |> response(conn)
+    |> response
   end
 
   get "/astronomy" do
@@ -135,7 +135,7 @@ defmodule Router do
       |> Enum.map(fn(response) -> response.body |> Poison.decode! |>  Map.get("url") end)
       |> request
       |> transform(binary_to_img)
-      |> response(conn)
+      |> response
 
     case chunk(conn, "</body></html>") do
       {:ok, new_conn} -> new_conn
