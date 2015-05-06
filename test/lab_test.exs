@@ -71,14 +71,14 @@ defmodule RouterTest do
     assert conn.method == "GET"
 
     {{year, month, day}, _other} = :calendar.local_time
-    date_string = "#{String.slice("0#{day}", -2, 2)}-#{String.slice("0#{month}", -2, 2)}-#{year}"
+    date_string = "#{String.slice("0#{month}", -2, 2)}-#{String.slice("0#{day}", -2, 2)}-#{year}"
 
     assert conn.resp_body == date_string
   end
 
   test "5) Create a weather end-point" do
     conn =
-      conn(:get, "/weather?malmo,se|halmstad,se|san francisco,us|stockholm,se")
+      conn(:get, "/weather?halmstad,se|san francisco,us|stockholm,se")
       |> Router.call(@opts)
 
     assert conn.state == :chunked
@@ -89,17 +89,18 @@ defmodule RouterTest do
 
     response = Poison.decode!(conn.resp_body)
 
-    assert length(response) == 4
-    assert Enum.any?(response, &(Map.keys(&1) == ["Malmo"]))
-    assert Enum.any?(response, &(Map.keys(&1) == ["Halmstad"]))
-    assert Enum.any?(response, &(Map.keys(&1) == ["San Francisco"]))
-    assert Enum.any?(response, &(Map.keys(&1) == ["Stockholm"]))
+    length(response) == 3
+    [halmstad, sanfran, stockholm]  = response
+    
+    assert Map.keys(halmstad) == ["Halmstad"]
+    assert Map.keys(sanfran) == ["San Francisco"]
+    assert Map.keys(stockholm) == ["Stockholm"]
   end
 
 
   test "6) Combine two APIs" do
     conn =
-      conn(:get, "/weather/postal_code?22644|21120")
+      conn(:get, "/weather/postal_code?22644|55454")
       |> Router.call(@opts)
 
     assert conn.state == :chunked
@@ -109,9 +110,11 @@ defmodule RouterTest do
     assert conn.method == "GET"
 
     response = Poison.decode!(conn.resp_body)
-
+    
     assert length(response) == 2
-    assert Enum.any?(response, &(Map.keys(&1) == ["Lunds Kommun"]))
-    assert Enum.any?(response, &(Map.keys(&1) == ["Malmoe"]))
+    
+    [lund, jkpg] = response
+    assert Map.keys(lund) == ["Lund"]
+    assert Map.keys(jkpg) == ["Jonkoping"]
   end
 end
