@@ -13,7 +13,7 @@ defmodule Router do
   #
   # Functions: conn.query_string, request, response(conn)
   get "/proxy" do
-    conn
+    url = conn.query_string
   end
 
   # 2) Use the function concatenate_json to concatenate two API-calls.
@@ -22,8 +22,6 @@ defmodule Router do
   get "/concatenate-json" do
     url_1 = "http://ip.jsontest.com/"
     url_2 = "http://date.jsontest.com/"
-
-    conn
   end
 
   # 3) Add a new header to the response: "foo" = "bar".
@@ -37,7 +35,7 @@ defmodule Router do
     "http://ip.jsontest.com/"
     |> request
     |> transform(header_adder)
-    |> response(conn)
+    |> response
   end
 
   # 4) Use the function "transform" to modify the result and strip out everyting
@@ -47,8 +45,6 @@ defmodule Router do
   # Poison.decode!, response(conn)
   get "/date" do
     url = "http://date.jsontest.com/"
-
-    conn
   end
 
   # 5) Create an end-point which can receive an arbitrary amount of cities and
@@ -67,7 +63,7 @@ defmodule Router do
   #
   # Use String.split(conn.query_string, "|") to turn the string in to a list.
   get "/weather" do
-    conn
+    url = "..."
   end
 
   # 6) Combine two APIs! Display the temperature as in the previous example, but
@@ -82,7 +78,7 @@ defmodule Router do
   # Then call the API http://api.openweathermap.org/data/2.5/weather?lat=<latitude>&lon=<longitude>
   # to get the weather data.
   get "/weather/postal_code" do
-    conn
+    url = "..."
   end
 
   # 7) Astronomy picture of the dayS!
