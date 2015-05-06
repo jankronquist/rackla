@@ -30,13 +30,13 @@ defmodule Router do
   #
   # Functions: Map.update!, Map.put
   get "/proxy/header" do
-    header_remover = fn(response) ->
+    header_adder = fn(response) ->
       response
     end
 
     "http://ip.jsontest.com/"
     |> request
-    |> transform(header_remover)
+    |> transform(header_adder)
     |> response(conn)
   end
 
