@@ -89,7 +89,7 @@ defmodule RouterTest do
 
     response = Poison.decode!(conn.resp_body)
 
-    length(response) == 3
+    assert length(response) == 3
     [halmstad, sanfran, stockholm]  = response
 
     assert Map.keys(halmstad) == ["Halmstad"]
