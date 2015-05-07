@@ -91,7 +91,7 @@ defmodule RouterTest do
 
     length(response) == 3
     [halmstad, sanfran, stockholm]  = response
-    
+
     assert Map.keys(halmstad) == ["Halmstad"]
     assert Map.keys(sanfran) == ["San Francisco"]
     assert Map.keys(stockholm) == ["Stockholm"]
@@ -110,11 +110,10 @@ defmodule RouterTest do
     assert conn.method == "GET"
 
     response = Poison.decode!(conn.resp_body)
-    
     assert length(response) == 2
-    
+
     [lund, jkpg] = response
     assert lund |> Map.keys |> Enum.at(0) |> String.contains?("Lund")
-    assert jkpg |> Map.keys |> Enum.at(0) |> String.contains?("Jonkoping")
+    assert jkpg |> Map.keys |> Enum.at(0) |> String.contains?("Jonkoping") || jkpg |> Map.keys |> Enum.at(0) |> String.contains?("Rosenlund")
   end
 end
