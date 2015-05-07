@@ -11,14 +11,14 @@ defmodule Router do
   # Use conn.query_string to retrieve a URL.
   # Call end-point with "/proxy?www.example.com".
   #
-  # Functions: conn.query_string, request, response(conn)
+  # Functions: conn.query_string, request, response
   get "/proxy" do
     url = conn.query_string
   end
 
   # 2) Use the function concatenate_json to concatenate two API-calls.
   #
-  # Functions: request, concatenate_json, response(conn)
+  # Functions: request, concatenate_json, response
   get "/concatenate-json" do
     url_1 = "http://ip.jsontest.com/"
     url_2 = "http://date.jsontest.com/"
@@ -42,7 +42,7 @@ defmodule Router do
   # except the date. Respond with just the date as a string, no JSON!
   #
   # Functions: request, transform(...), Map.update!, Map.get,
-  # Poison.decode!, response(conn)
+  # Poison.decode!, response
   get "/date" do
     url = "http://date.jsontest.com/"
   end
@@ -61,7 +61,8 @@ defmodule Router do
   # To create a new map with var1 and var2 as key/value, you can use
   # Map.put(%{}, var1, var2)
   #
-  # Use String.split(conn.query_string, "|") to turn the string in to a list.
+  # Use String.split(conn.query_string, "|") to turn the query string into
+  # a list.
   get "/weather" do
     url = "..."
   end
@@ -70,13 +71,16 @@ defmodule Router do
   # instead we will accept an arbitrary amount of postal codes.
   #
   # If the URL is called with "/weather/postal_code?22644|21120" it should
-  # return [{"Lunds Kommun":286.753},{"Malmoe":286.753}] in JSON format.
+  # return [{"Lund":286.753},{"Malmo":286.753}] in JSON format.
   #
   # First call the API http://yourmoneyisnowmymoney.com/api/zipcodes/?zipcode=<postal code>
   # and extract the latitude and longitude.
   #
   # Then call the API http://api.openweathermap.org/data/2.5/weather?lat=<latitude>&lon=<longitude>
   # to get the weather data.
+  #
+  # Hint create a new request pipline inside the transform function. Use
+  # collect_response to turn it in to a new response.
   get "/weather/postal_code" do
     url = "..."
   end
@@ -86,8 +90,9 @@ defmodule Router do
   # Take an arbitrary amount of dates and use them to call the API:
   # https://api.data.gov/nasa/planetary/apod?concept_tags=True&api_key=DEMO_KEY&date=2015-03-29
   #
-  # Use someting like this to encode the image data as a HTML image tag:
-  # "<img src=\"data:image/jpeg;base64,#{Base.encode64(body)}\" height=\"150px\" width=\"150px\">"
+  # Request each image to get the binary data and use someting like this to
+  # encode the image data as an HTML image tag:
+  # "<img src=\"data:image/jpeg;base64,#{Base.encode64(image_data)}\" height=\"150px\" width=\"150px\">"
   #
   # Stub code is provided to make the response valid HTML so you can view it in
   # your browser. There is no unit test for this, check it out yourself!
